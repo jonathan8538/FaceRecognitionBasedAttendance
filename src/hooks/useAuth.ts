@@ -1,97 +1,112 @@
-import { useState, useCallback } from 'react';
-import type { User, AuthState } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
-// Placeholder auth hook - replace with actual Supabase implementation
 export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-  });
+  const [user, setUser] = useState<any | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
-    
-    // TODO: Replace with actual Supabase auth
-    // const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    // Simulated login for demo
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-      createdAt: new Date(),
+  // Load session at app start
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      const sessionUser = data.session?.user ?? null;
+
+      setUser(sessionUser);
+      setIsAuthenticated(!!sessionUser);
+      setIsLoading(false);
     };
-    
-    setAuthState({
-      user: mockUser,
-      isAuthenticated: true,
-      isLoading: false,
+
+    loadUser();
+
+    // Listen to auth events
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null;
+      setUser(user);
+      setIsAuthenticated(!!user);
     });
-    
-    return mockUser;
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
+  // SIGN UP
   const signup = useCallback(async (email: string, password: string, name: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
-    
-    // TODO: Replace with actual Supabase auth
-    // const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-    
-    // Simulated signup for demo
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: Date.now().toString(),
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
       email,
-      name,
-      createdAt: new Date(),
-    };
-    
-    setAuthState({
-      user: mockUser,
-      isAuthenticated: true,
-      isLoading: false,
+      password,
+      options: {
+        data: { name },
+      },
     });
-    
-    return mockUser;
+
+    setIsLoading(false);
+
+    if (error) throw error;
+
+    const newUser = data.user;
+    setUser(newUser);
+    setIsAuthenticated(true);
+    return newUser;
   }, []);
 
+  // LOGIN
+  const login = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    setIsLoading(false);
+
+    if (error) throw error;
+
+    const loggedUser = data.user;
+    setUser(loggedUser);
+    setIsAuthenticated(true);
+    return loggedUser;
+  }, []);
+
+  // LOGOUT
   const logout = useCallback(async () => {
-    // TODO: Replace with actual Supabase auth
-    // await supabase.auth.signOut();
-    
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    await supabase.auth.signOut();
+    setUser(null);
+    setIsAuthenticated(false);
   }, []);
 
-  const updateUserFace = useCallback(async (faceImageUrl: string) => {
-    // TODO: Replace with actual database update
-    // await supabase.from('users').update({ face_image_url: faceImageUrl }).eq('id', user.id);
-    
-    setAuthState(prev => ({
-      ...prev,
-      user: prev.user ? { ...prev.user, faceImageUrl } : null,
-    }));
-  }, []);
+  // SAVE FACE EMBEDDING
+  const updateUserFace = useCallback(async (embedding256: number[]) => {
+    if (!user) throw new Error("No authenticated user");
 
-  const updateUserBlink = useCallback(async (blinkSequence: Blob) => {
-    // TODO: Replace with actual database update
-    // await supabase.storage.from('blinks').upload(`${user.id}/blink.webm`, blinkSequence);
-    
-    setAuthState(prev => ({
-      ...prev,
-      user: prev.user ? { ...prev.user, blinkSequence } : null,
-    }));
-  }, []);
+    const { error } = await supabase
+      .from("user_face_embeddings")
+      .upsert({
+        user_id: user.id,
+        embedding: embedding256,
+        version: "MiniFaceNet-256D-v1",
+      });
+
+    if (error) throw error;
+  }, [user]);
+
+  // SAVE BLINK SIGNATURE
+  const updateUserBlink = useCallback(async (blinkSignature: any) => {
+    if (!user) throw new Error("No authenticated user");
+
+    const { error } = await supabase
+      .from("user_blink_patterns")
+      .upsert({
+        user_id: user.id,
+        blink_signature: blinkSignature,
+      });
+
+    if (error) throw error;
+  }, [user]);
 
   return {
-    ...authState,
+    user,
+    isAuthenticated,
+    isLoading,
     login,
     signup,
     logout,
