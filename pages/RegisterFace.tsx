@@ -6,11 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { WebcamCapture } from '@/components/WebcamCapture';
 import { useAuthContext } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient';
+
+import { base64ToImageData } from '@/lib/imageHelpers';
+import { getEmbedding } from '@/lib/miniFaceNet';
 
 export default function RegisterFace() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const { updateUserFace } = useAuthContext();
+  const { user } = useAuthContext();
+  console.log("User:", user);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,22 +28,36 @@ export default function RegisterFace() {
   };
 
   const handleSave = async () => {
-    if (!capturedImage) return;
+    if (!capturedImage || !user) return;
 
     setIsSaving(true);
     try {
-      // TODO: Upload image to Supabase Storage
-      // const { data, error } = await supabase.storage.from('faces').upload(`${user.id}/face.jpg`, blob);
-      
-      await updateUserFace(capturedImage);
-      
+      // 1. Convert base64 -> ImageData
+      const imgData = await base64ToImageData(capturedImage);
+
+      // 2. Generate embedding (MiniFaceNet 256D)
+      const embedding = await getEmbedding(imgData);
+
+      // 3. Save embedding to Supabase
+      const { error } = await supabase
+        .from("user_face_embeddings")
+        .insert({
+          user_id: user.id,
+          embedding,
+          version: "MiniFaceNet-256D-v1"
+        });
+
+      if (error) throw error;
+
       toast({
         title: 'Face registered!',
-        description: 'Now let\'s record your blink pattern.',
+        description: 'Now let’s record your blink pattern.',
       });
-      
+
       navigate('/register-blink');
+
     } catch (error) {
+      console.error(error);
       toast({
         title: 'Failed to save',
         description: 'Could not save face data. Please try again.',
@@ -62,6 +81,7 @@ export default function RegisterFace() {
               2
             </div>
           </div>
+
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
             <Camera className="w-6 h-6 text-primary" />
             Register Your Face
@@ -70,6 +90,7 @@ export default function RegisterFace() {
             Position your face within the guide and capture a clear photo
           </CardDescription>
         </CardHeader>
+
         <CardContent className="space-y-6">
           <WebcamCapture
             onCapture={handleCapture}
