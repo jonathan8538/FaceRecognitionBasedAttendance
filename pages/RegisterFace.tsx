@@ -1,26 +1,31 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Camera, ArrowRight, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { WebcamCapture } from '@/components/WebcamCapture';
-import { useAuthContext } from '@/context/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabaseClient';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Camera, ArrowRight, Loader2 } from "lucide-react";
 
-import { base64ToImageData } from '@/lib/imageHelpers';
-import { getEmbedding } from '@/lib/miniFaceNet';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import { WebcamCapture } from "@/components/WebcamCapture";
+import { useAuthContext } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function RegisterFace() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
   const { user } = useAuthContext();
-  console.log("User:", user);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleCapture = (imageData: string) => {
-    setCapturedImage(imageData);
+  const handleCapture = (imageBase64: string) => {
+    setCapturedImage(imageBase64);
   };
 
   const handleRetake = () => {
@@ -31,41 +36,54 @@ export default function RegisterFace() {
     if (!capturedImage || !user) return;
 
     setIsSaving(true);
+
     try {
-      // 1. Convert base64 -> ImageData
-      const imgData = await base64ToImageData(capturedImage);
+      // 1️⃣ Kirim foto ke backend DeepFace
+      const res = await fetch("http://localhost:8000/face/embedding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: capturedImage, // base64 data:image/jpeg;base64,...
+        }),
+      });
 
-      // 2. Generate embedding (MiniFaceNet 256D)
-      const embedding = await getEmbedding(imgData);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.detail ?? "Failed to extract embedding");
+      }
 
-      console.log("Embedding:", embedding);
-      console.log("Type:", typeof embedding, Array.isArray(embedding));
+      const { embedding, model, dimensions } = await res.json();
 
+      if (!Array.isArray(embedding)) {
+        throw new Error("Invalid embedding returned from server");
+      }
 
-      // 3. Save embedding to Supabase
+      // 2️⃣ Simpan embedding ke Supabase
       const { error } = await supabase
         .from("user_face_embeddings")
         .insert({
           user_id: user.id,
-          embedding,
-          version: "MiniFaceNet-256D-v1"
+          embedding, // float[] (512D ArcFace)
+          model,
+          dimensions,
         });
 
       if (error) throw error;
 
       toast({
-        title: 'Face registered!',
-        description: 'Now let’s record your blink pattern.',
+        title: "Face registered!",
+        description: "Proceed to blink registration.",
       });
 
-      navigate('/register-blink');
-
-    } catch (error) {
-      console.error("Supabase error:", error);
+      navigate("/register-blink");
+    } catch (err: any) {
+      console.error("RegisterFace error:", err);
       toast({
-        title: 'Failed to save',
-        description: 'Could not save face data. Please try again.',
-        variant: 'destructive',
+        title: "Failed to register face",
+        description: err.message ?? "Something went wrong",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -91,7 +109,7 @@ export default function RegisterFace() {
             Register Your Face
           </CardTitle>
           <CardDescription>
-            Position your face within the guide and capture a clear photo
+            Make sure your face is clearly visible and well-lit
           </CardDescription>
         </CardHeader>
 
@@ -111,7 +129,7 @@ export default function RegisterFace() {
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
+                  Processing...
                 </>
               ) : (
                 <>
