@@ -9,6 +9,7 @@ import { BlinkRecorder } from '@/components/BlinkRecorder';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { base64ToImageData } from '@/lib/imageHelpers';
+import { countBlinksInVideo } from '@/lib/blinkDetection';
 
 type Step = 'face' | 'blink' | 'complete';
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'failed';
@@ -68,40 +69,45 @@ export default function CheckIn() {
     setBlinkStatus('idle');
   };
 
-  const handleVerifyBlink = async () => {
-    if (!recordedBlink) return;
+
+
+ // Tambahkan state baru di awal komponen CheckIn
+const [blinkTarget, setBlinkTarget] = useState<number>(0);
+
+// Saat user masuk ke step 'blink', tentukan target acak
+useEffect(() => {
+  if (step === 'blink') {
+    const randomTarget = Math.floor(Math.random() * 3) + 1; // Angka 1-3
+    setBlinkTarget(randomTarget);
+  }
+}, [step]);
+
+const handleVerifyBlink = async () => {
+  if (!recordedBlink) return;
+  
+  setBlinkStatus('verifying');
+  
+  try {
+    // Panggil model pemroses video (verifyBlink)
+    // Kita kirimkan blob video dan target angka acaknya
+    const detectedCount = await countBlinksInVideo(recordedBlink);
     
-    setBlinkStatus('verifying');
-    
-    // TODO: Send to your blink verification API/model
-    // const result = await verifyBlink(recordedBlink, user.blinkSequence);
-    
-    // Simulated verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // For demo: randomly succeed (you'll replace with actual verification)
-    const success = Math.random() > 0.2;
-    
-    if (success) {
+    if (detectedCount === blinkTarget) {
       setBlinkStatus('success');
       setStep('complete');
-      
-      // TODO: Record attendance in database
-      // await supabase.from('attendance').insert({ user_id: user.id, check_in_time: new Date() });
-      
-      toast({
-        title: 'Check-in successful!',
-        description: 'Your attendance has been recorded.',
-      });
+      toast({ title: 'Verified!', description: 'Blink count matched.' });
     } else {
       setBlinkStatus('failed');
       toast({
-        title: 'Blink verification failed',
-        description: 'Please try again with a clear double blink.',
+        title: 'Verification failed',
+        description: `Expected ${blinkTarget} blinks, but detected ${detectedCount}.`,
         variant: 'destructive',
       });
     }
-  };
+  } catch (error) {
+    setBlinkStatus('failed');
+  }
+};
 
   return (
     <Layout>
