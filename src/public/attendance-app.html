@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Attendance System</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .card-header {
+      padding: 24px;
+      text-align: center;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .card-header h1 {
+      font-size: 1.5rem;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    
+    .card-header p {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+    
+    .card-content {
+      padding: 24px;
+    }
+    
+    .icon-circle {
+      width: 64px;
+      height: 64px;
+      background: #3b82f620;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    
+    .icon-circle svg {
+      width: 32px;
+      height: 32px;
+      color: #3b82f6;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px #3b82f620;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-outline {
+      background: white;
+      border: 2px solid #e2e8f0;
+      color: #374151;
+    }
+    
+    .btn-outline:hover {
+      background: #f8fafc;
+    }
+    
+    .webcam-container {
+      position: relative;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      margin-bottom: 16px;
+    }
+    
+    #webcam, #capturedImage {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .webcam-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .face-guide {
+      width: 180px;
+      height: 220px;
+      border: 3px dashed rgba(255,255,255,0.5);
+      border-radius: 50%;
+    }
+    
+    .capture-btn {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: white;
+      border: 4px solid #3b82f6;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .capture-btn:hover {
+      transform: translateX(-50%) scale(1.1);
+    }
+    
+    .capture-btn::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      background: #3b82f6;
+      border-radius: 50%;
+    }
+    
+    .class-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+    
+    .info-item svg {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .success-box {
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      color: #166534;
+    }
+    
+    .success-box svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .success-box h2 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+    
+    .blink-instruction {
+      background: #dbeafe;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    
+    .blink-instruction h3 {
+      color: #1d4ed8;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .loader {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      transform: translateX(120%);
+      transition: transform 0.3s;
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateX(0);
+    }
+    
+    .toast.success {
+      background: #22c55e;
+    }
+    
+    .toast.error {
+      background: #ef4444;
+    }
+    
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e2e8f0;
+    }
+    
+    .step-dot.active {
+      background: #3b82f6;
+    }
+    
+    .step-dot.completed {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- Page 1: Signup -->
+    <div id="signupPage" class="card">
+      <div class="card-header">
+        <div class="icon-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <h1>Student Registration</h1>
+        <p>Enter your details to start</p>
+      </div>
+      <div class="card-content">
+        <form id="signupForm">
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" placeholder="John Doe" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="text" id="email" placeholder="JohnDoe@example.com" required>
+          </div>
+          <button type="submit" class="btn btn-primary" id="signupBtn">
+            Continue to Face Setup
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Page 2: Register Face -->
+    <div id="registerFacePage" class="card hidden">
+      <div class="card-header">
+        <h1>Biometric Setup</h1>
+        <p>Scan your face to enable one-tap check-in</p>
+      </div>
+      <div class="card-content">
+        <div class="webcam-container">
+          <video id="webcamRegister" autoplay playsinline></video>
+          <img id="capturedImageRegister" class="hidden" alt="Captured face">
+          <div class="webcam-overlay" id="overlayRegister">
+            <div class="face-guide"></div>
+          </div>
+          <button class="capture-btn" id="captureBtnRegister" title="Capture"></button>
+        </div>
+        <div id="registerActions" class="hidden">
+          <button class="btn btn-primary" id="saveFaceBtn" style="margin-bottom: 12px;">
+            Complete Registration
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+          <button class="btn btn-outline" id="retakeRegisterBtn">Retake Photo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page 3: Class Details -->
+    <div id="classDetailsPage" class="card hidden">
+      <div class="card-header" style="background: #f8fafc; border-top: 4px solid #3b82f6;">
+        <h1>Artificial Intelligence 101</h1>
+      </div>
+      <div class="card-content">
+        <div class="class-info">
+          <div class="info-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            </svg>
+            Lab Computer 04
+          </div>
+          <div class="info-item">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            09:00 AM - 11:00 AM
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; margin-bottom: 20px;"><strong>Instructor:</strong> King Rony Andrean</p>
+        
+        <button class="btn btn-primary" id="checkInBtn">
+          Check-in to Class
+        </button>
+      </div>
+    </div>
+
+    <!-- Face Verification Modal -->
+    <div id="faceVerifyCard" class="card hidden" style="border: 2px solid #f97316;">
+      <div class="card-header">
+        <h1>Step 1: Face Verify</h1>
+      </div>
+      <div class="card-content">
+        <div class="webcam-container">
+          <video id="webcamVerify" autoplay playsinline></video>
+          <div class="webcam-overlay">
+            <div class="face-guide"></div>
+          </div>
+          <button class="capture-btn" id="captureBtnVerify" title="Capture"></button>
+        </div>
+
+        <div id="modelStatusContainer" class="hidden" style="margin-top: 15px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 0.85rem; color: #64748b;">ArcFace Model:</span>
+            <span id="statusArcFace" style="font-size: 0.85rem; font-weight: bold;">-</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="font-size: 0.85rem; color: #64748b;">Custom ResNet:</span>
+            <span id="statusResNet" style="font-size: 0.85rem; font-weight: bold;">-</span>
+          </div>
+        </div>
+
+        <div id="verifyingFace" class="hidden" style="text-align: center; margin-top: 16px;">
+          <div class="loader" style="margin: 0 auto;"></div>
+          <p style="margin-top: 8px; color: #64748b;">Verifying face...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blink Verification Modal -->
+    <div id="blinkVerifyCard" class="card hidden" style="border: 2px solid #3b82f6;">
+      <div class="card-header">
+        <div class="blink-instruction">
+          <h3>
+            Blink <span id="blinkTarget">2</span> Times
+          </h3>
+        </div>
+      </div>
+      <div class="card-content">
+      <div class="webcam-container">
+        <video id="webcamBlink" autoplay playsinline></video>
+      </div>
+      
+      <div id="blinkScoreboard" class="hidden" style="display: flex; justify-content: space-around; margin-bottom: 15px; padding: 10px; background: #f0f9ff; border-radius: 8px;">
+        <div style="text-align: center;">
+          <p style="font-size: 0.8rem; color: #64748b;">EAR (Local)</p>
+          <h4 id="earResult" style="font-size: 1.5rem; color: #3b82f6;">0</h4>
+        </div>
+        <div style="text-align: center;">
+          <p style="font-size: 0.8rem; color: #64748b;">LSTM (Server)</p>
+          <h4 id="lstmResult" style="font-size: 1.5rem; color: #1d4ed8;">0</h4>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="startRecordBtn">Start Recording (5 seconds)</button>
+        <div id="recordingIndicator" class="hidden" style="text-align: center; margin-top: 16px;">
+          <div class="loader" style="margin: 0 auto;"></div>
+          <p style="margin-top: 8px; color: #ef4444;">Recording... Keep blinking!</p>
+        </div>
+        <div id="verifyingBlink" class="hidden" style="text-align: center; margin-top: 16px;">
+          <div class="loader" style="margin: 0 auto;"></div>
+          <p style="margin-top: 8px; color: #64748b;">Analyzing blinks...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Page -->
+    <div id="successPage" class="hidden">
+      <div class="success-box">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h2>Attendance Recorded!</h2>
+        <p style="margin-bottom: 20px;">You have successfully checked in for Artificial Intelligence 101.</p>
+        <button class="btn btn-outline" id="doneBtn" style="max-width: 200px; margin: 0 auto;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ CONFIG ============
+    const API_BASE = 'http://localhost:8000';
+    
+    
+    // ============ STATE ============
+    let currentUser = null;
+    let capturedFaceImage = null;
+    let blinkTarget = 0;
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    // ============ DOM ELEMENTS ============
+    const pages = {
+      signup: document.getElementById('signupPage'),
+      registerFace: document.getElementById('registerFacePage'),
+      classDetails: document.getElementById('classDetailsPage'),
+      faceVerify: document.getElementById('faceVerifyCard'),
+      blinkVerify: document.getElementById('blinkVerifyCard'),
+      success: document.getElementById('successPage')
+    };
+
+    // ============ UTILITY FUNCTIONS ============
+    function showPage(pageName) {
+      Object.values(pages).forEach(p => p.classList.add('hidden'));
+      pages[pageName].classList.remove('hidden');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function startWebcam(videoElement) {
+      try {
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => track.stop());
+        }
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'user', width: 640, height: 480 } 
+        });
+        videoElement.srcObject = mediaStream;
+      } catch (err) {
+        showToast('Camera access denied', 'error');
+        console.error(err);
+      }
+    }
+
+    function captureFrame(videoElement) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+      canvas.getContext('2d').drawImage(videoElement, 0, 0);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    }
+
+    function generateUserId() {
+      return 'user_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // ============ PAGE 1: SIGNUP ============
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      
+      // Simulate user creation (in real app, this would call Supabase)
+      currentUser = {
+        id: generateUserId(),
+        name: name,
+        email: email
+      };
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      showToast('Profile Created! Now register your face.');
+      showPage('registerFace');
+      startWebcam(document.getElementById('webcamRegister'));
+    });
+
+    // ============ PAGE 2: REGISTER FACE ============
+    document.getElementById('captureBtnRegister').addEventListener('click', () => {
+      const video = document.getElementById('webcamRegister');
+      const img = document.getElementById('capturedImageRegister');
+      
+      capturedFaceImage = captureFrame(video);
+      img.src = capturedFaceImage;
+      
+      video.classList.add('hidden');
+      img.classList.remove('hidden');
+      document.getElementById('overlayRegister').classList.add('hidden');
+      document.getElementById('captureBtnRegister').classList.add('hidden');
+      document.getElementById('registerActions').classList.remove('hidden');
+    });
+
+    document.getElementById('retakeRegisterBtn').addEventListener('click', () => {
+      const video = document.getElementById('webcamRegister');
+      const img = document.getElementById('capturedImageRegister');
+      
+      capturedFaceImage = null;
+      video.classList.remove('hidden');
+      img.classList.add('hidden');
+      document.getElementById('overlayRegister').classList.remove('hidden');
+      document.getElementById('captureBtnRegister').classList.remove('hidden');
+      document.getElementById('registerActions').classList.add('hidden');
+    });
+
+    document.getElementById('saveFaceBtn').addEventListener('click', async () => {
+      if (!capturedFaceImage || !currentUser) return;
+      
+      const btn = document.getElementById('saveFaceBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loader"></div> Processing...';
+      
+      try {
+        // Call backend to get face embedding using face_recognition_model.h5
+        const res = await fetch(`${API_BASE}/face/embedding`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: capturedFaceImage })
+        });
+        
+        if (!res.ok) throw new Error('Failed to process face model');
+        const { embedding, model, dimensions } = await res.json();
+        
+        // In real app, save to Supabase user_face_embeddings table
+        // For demo, store locally
+        localStorage.setItem('faceEmbedding', JSON.stringify({
+          user_id: currentUser.id,
+          embedding,
+          model,
+          dimensions
+        }));
+        
+        showToast('Face Registered Successfully!');
+        showPage('classDetails');
+        
+        // Stop webcam
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => track.stop());
+        }
+      } catch (err) {
+        showToast(err.message || 'Registration failed', 'error');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Complete Registration <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>';
+      }
+    });
+
+    // ============ PAGE 3: CLASS DETAILS & CHECK-IN ============
+    document.getElementById('checkInBtn').addEventListener('click', () => {
+      blinkTarget = Math.floor(Math.random() * 3) + 1; // Random 1 or 2 blinks
+      document.getElementById('blinkTarget').textContent = blinkTarget;
+      
+      showPage('faceVerify');
+      startWebcam(document.getElementById('webcamVerify'));
+    });
+
+    // Face Verification
+    document.getElementById('captureBtnVerify').addEventListener('click', async () => {
+      const video = document.getElementById('webcamVerify');
+      const faceImage = captureFrame(video);
+      
+      // 1. AMBIL EMBEDDING DARI LOCALSTORAGE
+      const savedFaceData = JSON.parse(localStorage.getItem('faceEmbedding'));
+
+      if (!savedFaceData || !savedFaceData.embedding) {
+        showToast('No saved face data found on this device. Please re-register.', 'error');
+        return;
+      }
+
+      const statusContainer = document.getElementById('modelStatusContainer');
+      const statusArcFace = document.getElementById('statusArcFace');
+      const statusResNet = document.getElementById('statusResNet');
+
+      document.getElementById('captureBtnVerify').classList.add('hidden');
+      document.getElementById('verifyingFace').classList.remove('hidden');
+      statusContainer.classList.add('hidden'); 
+      
+      try {
+        const res = await fetch(`${API_BASE}/face/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            image: faceImage, 
+            // 2. KIRIM EMBEDDING KE BACKEND
+            saved_embeddings: {
+                "embedding_arcface": savedFaceData.embedding 
+            },
+            user_id: currentUser?.id 
+          })
+        });
+        
+        const result = await res.json();
+        
+        if (!res.ok) throw new Error(result.detail || 'Verification failed');
+
+        statusContainer.classList.remove('hidden');
+        statusArcFace.textContent = result.results.arcface;
+        statusArcFace.style.color = result.results.arcface === "Match" ? "#166534" : "#991b1b";
+        
+        statusResNet.textContent = result.results.custom_resnet;
+        statusResNet.style.color = result.results.custom_resnet === "Match" ? "#166534" : "#991b1b";
+
+        if (result.is_verified) { 
+          showToast('Face Verified! Proceeding to Liveness Check...');
+          setTimeout(() => {
+            showPage('blinkVerify');
+            startWebcam(document.getElementById('webcamBlink'));
+          }, 1500);
+        } else {
+          showToast('Face not recognized!', 'error');
+          document.getElementById('captureBtnVerify').classList.remove('hidden');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        document.getElementById('captureBtnVerify').classList.remove('hidden');
+        console.error(err);
+      } finally {
+        document.getElementById('verifyingFace').classList.add('hidden');
+      }
+    });
+    
+    const LEFT_EYE = [33, 160, 158, 133, 153, 144];
+    const RIGHT_EYE = [362, 385, 387, 263, 373, 380];
+
+    const calculateEAR = (landmarks, eyeIndices) => {
+      const p = eyeIndices.map(i => landmarks[i]);
+      const v1 = Math.sqrt(Math.pow(p[1].x - p[5].x, 2) + Math.pow(p[1].y - p[5].y, 2));
+      const v2 = Math.sqrt(Math.pow(p[2].x - p[4].x, 2) + Math.pow(p[2].y - p[4].y, 2));
+      const h = Math.sqrt(Math.pow(p[0].x - p[3].x, 2) + Math.pow(p[0].y - p[3].y, 2));
+      return (v1 + v2) / (2.0 * h);
+    };
+
+    // Fungsi memproses video secara lokal menggunakan MediaPipe
+    async function runLocalEAR(videoBlob) {
+      return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(videoBlob);
+        
+        const faceMesh = new FaceMesh({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+        });
+
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5 });
+
+        let blinks = 0;
+        let isClosed = false;
+
+        faceMesh.onResults((results) => {
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const landmarks = results.multiFaceLandmarks[0];
+            const ear = (calculateEAR(landmarks, LEFT_EYE) + calculateEAR(landmarks, RIGHT_EYE)) / 2;
+            
+            if (ear < 0.24 && !isClosed) isClosed = true;
+            else if (ear > 0.27 && isClosed) { blinks++; isClosed = false; }
+          }
+        });
+
+        video.onloadedmetadata = () => {
+          video.play();
+          const process = async () => {
+            if (!video.ended) {
+              await faceMesh.send({ image: video });
+              requestAnimationFrame(process);
+            } else resolve(blinks);
+          };
+          process();
+        };
+      });
+    }
+    
+    // Blink Verification
+    document.getElementById('startRecordBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('startRecordBtn');
+      btn.classList.add('hidden');
+      document.getElementById('recordingIndicator').classList.remove('hidden');
+      
+      recordedChunks = [];
+      
+      try {
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        
+        mediaRecorder.onstop = async () => {
+          document.getElementById('recordingIndicator').classList.add('hidden');
+          document.getElementById('verifyingBlink').classList.remove('hidden');
+          
+          const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+          
+          try {
+            // --- PROSES 1: EAR Lokal (MediaPipe) ---
+            const earCount = await runLocalEAR(videoBlob);
+            console.log("EAR Count:", earCount);
+
+            // --- PROSES 2: LSTM Backend (Python Model .h5) ---
+            const formData = new FormData();
+            formData.append('video', videoBlob, 'blink.webm');
+            
+            const res = await fetch(`${API_BASE}/blink/count`, {
+              method: 'POST',
+              body: formData
+            });
+            
+            const { count: lstmCount } = await res.json();
+            console.log("LSTM Count:", lstmCount);
+
+            // --- VERIFIKASI DUAL ENGINE ---
+            // Anda bisa mengatur syarat kelulusan, misal keduanya harus >= target
+            if (earCount >= blinkTarget || lstmCount >= blinkTarget) {
+              showToast(`Verified! EAR: ${earCount}, LSTM: ${lstmCount}`);
+              showPage('success');
+              
+              if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+            } else {
+              showToast(`Failed! EAR: ${earCount}, LSTM: ${lstmCount}`, 'error');
+              showPage('classDetails');
+            }
+            
+          } catch (err) {
+            showToast('Blink analysis failed', 'error');
+            showPage('classDetails');
+            console.error(err);
+          } finally {
+            document.getElementById('verifyingBlink').classList.add('hidden');
+          }
+        };
+        
+        mediaRecorder.start();
+        setTimeout(() => { if (mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 5000);
+        
+      } catch (err) {
+        showToast('Recording failed', 'error');
+        btn.classList.remove('hidden');
+        document.getElementById('recordingIndicator').classList.add('hidden');
+        console.error(err);
+      }
+    });
+
+    // Done button
+    document.getElementById('doneBtn').addEventListener('click', () => {
+      showPage('classDetails');
+    });
+
+    // ============ INIT ============
+    // Check for existing user session
+    const savedUser = localStorage.getItem('currentUser');
+    const savedFace = localStorage.getItem('faceEmbedding');
+    
+    if (savedUser && savedFace) {
+      currentUser = JSON.parse(savedUser);
+      showPage('classDetails');
+    } else if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      showPage('registerFace');
+      startWebcam(document.getElementById('webcamRegister'));
+    } else {
+      showPage('signup');
+    }
+  </script>
+</body>
+</html>
