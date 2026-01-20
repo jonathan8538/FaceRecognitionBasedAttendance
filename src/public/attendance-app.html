@@ -647,7 +647,7 @@
 
     // ============ PAGE 3: CLASS DETAILS & CHECK-IN ============
     document.getElementById('checkInBtn').addEventListener('click', () => {
-      blinkTarget = Math.floor(Math.random() * 3) + 1; // Random 1 or 2 blinks
+      blinkTarget = Math.floor(Math.random() * 10) + 1; // Random 1 or 2 blinks
       document.getElementById('blinkTarget').textContent = blinkTarget;
       
       showPage('faceVerify');
