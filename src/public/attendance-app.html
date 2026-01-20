@@ -575,7 +575,7 @@
       startWebcam(document.getElementById('webcamRegister'));
     });
 
-    // ============ PAGE 2: REGISTER FACE ============
+    //REGISTER FACE
     document.getElementById('captureBtnRegister').addEventListener('click', () => {
       const video = document.getElementById('webcamRegister');
       const img = document.getElementById('capturedImageRegister');
@@ -620,7 +620,6 @@
         if (!res.ok) throw new Error('Failed to process face model');
         const { embedding, model, dimensions } = await res.json();
         
-        // In real app, save to Supabase user_face_embeddings table
         // For demo, store locally
         localStorage.setItem('faceEmbedding', JSON.stringify({
           user_id: currentUser.id,
@@ -647,7 +646,7 @@
 
     // ============ PAGE 3: CLASS DETAILS & CHECK-IN ============
     document.getElementById('checkInBtn').addEventListener('click', () => {
-      blinkTarget = Math.floor(Math.random() * 10) + 1; // Random 1 or 2 blinks
+      blinkTarget = Math.floor(Math.random() * 5) + 1; // Random 1 -5 blinks
       document.getElementById('blinkTarget').textContent = blinkTarget;
       
       showPage('faceVerify');
