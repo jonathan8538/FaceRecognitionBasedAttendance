@@ -30,7 +30,6 @@ def count_blinks_logic(video_bytes):
 
     blink_count = 0
     if len(frames) > 0:
-        # Gunakan NumPy array murni
         input_data = np.array([frames], dtype=np.float32)
         prediction = model.predict(input_data, verbose=0)
         blink_count = int(np.sum(prediction > 0.5)) 
