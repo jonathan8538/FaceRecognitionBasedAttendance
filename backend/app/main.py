@@ -23,7 +23,7 @@ app.add_middleware(
 def health_check():
     return {"status": "ok"}
 
-# 1. ENDPOINT UNTUK REGISTER 
+#REGISTER 
 @app.post("/face/embedding", response_model=FaceEmbeddingResponse)
 def create_embedding(payload: FaceEmbeddingRequest):
     try:
@@ -32,7 +32,7 @@ def create_embedding(payload: FaceEmbeddingRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# 2. ENDPOINT UNTUK VERIFY FACE 
+#VERIFY FACE 
 @app.post("/face/verify")
 async def verify_face(payload: dict):
     try:
