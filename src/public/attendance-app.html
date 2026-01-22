@@ -492,11 +492,11 @@
   </div>
 
   <script>
-    // ============ CONFIG ============
+    // CONFIG 
     const API_BASE = 'http://localhost:8000';
     
     
-    // ============ STATE ============
+    // STATE inisialization
     let currentUser = null;
     let capturedFaceImage = null;
     let blinkTarget = 0;
@@ -504,7 +504,7 @@
     let mediaRecorder = null;
     let recordedChunks = [];
 
-    // ============ DOM ELEMENTS ============
+    // DOM ELEMENTS 
     const pages = {
       signup: document.getElementById('signupPage'),
       registerFace: document.getElementById('registerFacePage'),
@@ -514,7 +514,7 @@
       success: document.getElementById('successPage')
     };
 
-    // ============ UTILITY FUNCTIONS ============
+    // FUNCTIONS 
     function showPage(pageName) {
       Object.values(pages).forEach(p => p.classList.add('hidden'));
       pages[pageName].classList.remove('hidden');
@@ -554,7 +554,7 @@
       return 'user_' + Math.random().toString(36).substr(2, 9);
     }
 
-    // ============ PAGE 1: SIGNUP ============
+    //  PAGE 1: SIGNUP 
     document.getElementById('signupForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('name').value;
@@ -567,7 +567,7 @@
         email: email
       };
       
-      // Store in localStorage for persistence
+      // Store in localStorage 
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       
       showToast('Profile Created! Now register your face.');
@@ -656,7 +656,7 @@
     // Face Verification
     document.getElementById('captureBtnVerify').addEventListener('click', async () => {
       const video = document.getElementById('webcamVerify');
-      const faceImage = captureFrame(video);
+      const faceImage = captureFrame(video); //live ketika test
       
       // 1. AMBIL EMBEDDING DARI LOCALSTORAGE
       const savedFaceData = JSON.parse(localStorage.getItem('faceEmbedding'));
